@@ -1,0 +1,44 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Mobile PWA polish across all user-facing feature pages. Apply the design system (cards rounded-2xl, buttons rounded-xl py-3.5 font-bold, active:scale-95 touch feedback, flex-col sm:flex-row stacking, overflow-x-auto for tabs) consistently to: dashboard, profile, orders/index, orders/show, wallet/index, wallet/fund, notifications, cart/index (add mobile sticky checkout bar), checkout, products/show, scraper/index, scraper/result, order-placed, and contact. Also applies to welcome.blade.php hero section touch improvements. FEAT-003 is independent of FEAT-001 and FEAT-002 (all feature pages extend layouts.app which FEAT-002 already updates; FEAT-003 changes are internal to each page's @section('content')).",
+  "status": "completed",
+  "steps": [
+    "Read resources/views/user/cart/index.blade.php in full. Add a mobile sticky checkout bar div above the @endsection: a fixed bar at 'bottom-16 sm:hidden' containing item count, total price, and a 'Checkout →' button linking to route('user.checkout'). For the total, compute inline from the passed $items variable: $items->sum(fn($i) => $i->unit_price_cny * ($rate ?? 1) * $i->quantity) — check what variables the view receives. Only show the bar @if($items->isNotEmpty()). Add active:scale-95 to the +/- quantity buttons if they exist.",
+    "Read resources/views/user/wallet/index.blade.php. Find the action buttons wrapper div (Fund Wallet, Send Money, History). Change it from 'flex flex-wrap gap-3' to 'flex flex-wrap gap-3 flex-col sm:flex-row' so buttons stack vertically on mobile. Add leading-tight to the p tag containing the balance amount.",
+    "Read resources/views/user/notifications.blade.php. Change all notification item divs from 'rounded-xl' to 'rounded-2xl'.",
+    "Read resources/views/user/profile.blade.php. Find the stats wrapper div (containing the 3 stat boxes). Change its outer div to use 'grid grid-cols-3 gap-3 sm:flex sm:gap-3 flex-shrink-0' so stats display in a fixed 3-column grid on mobile rather than flex-wrap. Also ensure the tab navigation bar has 'overflow-x-auto' and '-webkit-overflow-scrolling:touch' if it does not already.",
+    "Read resources/views/user/orders/index.blade.php. Find the filter status tabs strip if present and ensure it has 'overflow-x-auto -webkit-overflow-scrolling:touch scrollbar-hide'. Add any missing mobile padding.",
+    "Read resources/views/user/orders/show.blade.php. Find the action buttons row (Re-order, Back). Change to 'flex flex-wrap gap-2 flex-col sm:flex-row items-start'.",
+    "Read resources/views/user/checkout.blade.php. Verify the Place Order button has 'w-full py-3.5 rounded-xl font-bold' — add if missing. Verify payment method selector buttons have 'active:scale-95 transition'.",
+    "Read resources/views/user/products/show.blade.php. Find the Add to Cart / Import button group at the bottom. Change wrapper from 'flex gap-3' (if present) to 'flex flex-col sm:flex-row gap-3' so buttons stack on mobile. Add 'active:scale-95' to variant selector buttons. Find the thumbnail strip and add 'scrollbar-hide' class (add style: '::-webkit-scrollbar{display:none}') to the overflow container.",
+    "Read resources/views/user/scraper/result.blade.php. Find the action buttons (Add to Cart, Checkout) at the bottom. Change their wrapper to 'flex flex-col sm:flex-row gap-3'. Add 'active:scale-95' to variant selector buttons.",
+    "Read resources/views/user/order-placed.blade.php. Find the action buttons div. Verify it uses 'flex flex-col sm:flex-row gap-3' — add if missing.",
+    "Read resources/views/welcome.blade.php. Find the CTA button group. Replace inline onmouseover/onmouseout JS on the primary CTA buttons with Alpine.js :class binding or Tailwind hover: classes. Add 'active:scale-95 transition' to each CTA button. Leave hero structure unchanged.",
+    "Read resources/views/user/dashboard.blade.php. Add a mobile-only page title: insert '<h2 class=\"text-xl font-bold text-primary mb-4 sm:hidden\" style=\"font-family:Poppins,sans-serif\">Dashboard</h2>' at the very top of @section('content'), before the email verification reminder div.",
+    "Read resources/views/user/wallet/fund.blade.php. Make the back link more prominent: change 'text-sm text-gray-500 hover:text-primary' to 'text-sm text-gray-600 font-medium hover:text-primary flex items-center gap-1.5'. Add '<i class=\"fas fa-arrow-left text-xs\"></i>' inside the back link."
+  ],
+  "acceptance_criteria": [
+    "On the cart page at 375px viewport, a sticky bar at the bottom (above the bottom nav) shows total price and a Checkout button when the cart has items",
+    "Wallet index page: Fund/Send/History buttons stack vertically on mobile",
+    "Notification list items use rounded-2xl",
+    "Profile page stats display in a 3-column grid on mobile without wrapping",
+    "Order detail page action buttons stack vertically on mobile",
+    "Product show page: Add to Cart / Import buttons stack vertically on mobile; variant buttons have touch feedback",
+    "Scraper result page: action buttons stack vertically on mobile",
+    "Order placed page: action buttons stack vertically on mobile",
+    "Dashboard shows a mobile-only page title 'Dashboard' on small screens",
+    "All existing Blade @if/@foreach/@auth directives are intact — no functional regression"
+  ],
+  "verification": [
+    "php artisan view:clear && php artisan cache:clear",
+    "Log in and open http://127.0.0.1:8001/dashboard/cart at 375px — confirm sticky checkout bar appears when cart has items",
+    "Open http://127.0.0.1:8001/dashboard/wallet at 375px — confirm buttons stack vertically",
+    "Open http://127.0.0.1:8001/dashboard/notifications at 375px — confirm rounded-2xl card styling",
+    "Open http://127.0.0.1:8001/dashboard/profile at 375px — confirm 3-column stat grid",
+    "Open http://127.0.0.1:8001 (welcome) at 375px — confirm hero CTAs have active:scale-95 feedback",
+    "Open http://127.0.0.1:8001 at 1280px — confirm no desktop layout breakage"
+  ],
+  "blocked_reason": null,
+  "findings": "All 13 steps completed. Cart sticky bar moved to bottom-16 sm:hidden (above bottom nav) with active:scale-95 on qty buttons. Wallet index action buttons stacked with flex-col sm:flex-row. Notification items upgraded to rounded-2xl. Profile stats changed to grid-cols-3 sm:flex and tab nav got overflow-x-auto. Orders/show header action buttons use flex-col sm:flex-row. Checkout payment selectors got active:scale-95. Products/show Add-to-Cart wrapper uses flex-col sm:flex-row, variant buttons got active:scale-95, thumbnail strip got scrollbar-hide. Scraper result variant buttons got active:scale-95, Add-to-Cart and Checkout wrapped in flex-col sm:flex-row. Order-placed already had correct stacking. Welcome hero CTAs replaced onmouseover/onmouseout with Tailwind hover: classes and active:scale-95. Dashboard got sm:hidden mobile title. Wallet fund back link made more prominent. View cache was already empty so changes take effect immediately. PHP artisan timed out due to environment constraints but view cache confirmed empty."
+}
