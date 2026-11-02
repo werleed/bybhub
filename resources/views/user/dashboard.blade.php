@@ -115,18 +115,19 @@
     {{-- Stats --}}
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         @foreach([
-            ['icon'=>'fas fa-box','color'=>'from-blue-500 to-blue-600','val'=>$totalOrders,'label'=>'Total Orders'],
-            ['icon'=>'fas fa-check-circle','color'=>'from-green-500 to-green-600','val'=>$deliveredOrders,'label'=>'Delivered'],
-            ['icon'=>'fab fa-alipay','color'=>'from-purple-500 to-purple-600','val'=>$pendingSupplierPayments,'label'=>'Pending Payments'],
-            ['icon'=>'fas fa-users','color'=>'from-accent to-orange-500','val'=>$user->referrals_count ?? 0,'label'=>'Referrals'],
+            ['icon'=>'fas fa-box','color'=>'from-blue-500 to-blue-600','val'=>$totalOrders,'label'=>'Total Orders','sub'=>'All time'],
+            ['icon'=>'fas fa-check-circle','color'=>'from-green-500 to-green-600','val'=>$deliveredOrders,'label'=>'Delivered','sub'=>'Completed'],
+            ['icon'=>'fab fa-alipay','color'=>'from-purple-500 to-purple-600','val'=>$pendingSupplierPayments,'label'=>'Pending Payments','sub'=>'Awaiting action'],
+            ['icon'=>'fas fa-users','color'=>'from-accent to-orange-500','val'=>$user->referrals_count ?? 0,'label'=>'Referrals','sub'=>'Friends invited'],
         ] as $s)
-        <div class="bg-white rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-shadow">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-10 h-10 bg-gradient-to-br {{ $s['color'] }} rounded-xl flex items-center justify-center shadow-sm">
+        <div class="stat-card bg-white rounded-2xl p-5 shadow-card">
+            <div class="flex items-start justify-between mb-3">
+                <div class="w-11 h-11 bg-gradient-to-br {{ $s['color'] }} rounded-xl flex items-center justify-center shadow-sm">
                     <i class="{{ $s['icon'] }} text-white text-sm"></i>
                 </div>
+                <span class="text-[10px] text-gray-400 font-medium">{{ $s['sub'] }}</span>
             </div>
-            <p class="text-2xl font-black text-gray-800" style="font-family:Poppins,sans-serif">{{ $s['val'] }}</p>
+            <p class="text-2xl font-black text-gray-800 count-animate" style="font-family:Poppins,sans-serif">{{ $s['val'] }}</p>
             <p class="text-xs text-gray-500 font-medium mt-0.5">{{ $s['label'] }}</p>
         </div>
         @endforeach
@@ -219,7 +220,7 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
 
             {{-- My Orders with pending badge --}}
-            <a href="{{ route('user.orders.index') }}" class="relative bg-white rounded-2xl p-4 shadow-card hover:shadow-card-hover transition-all group">
+            <a href="{{ route('user.orders.index') }}" class="quick-action relative bg-white rounded-2xl p-4 shadow-card group">
                 @if(($pendingOrdersCount ?? 0) > 0)
                 <span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 z-10">{{ ($pendingOrdersCount > 9) ? '9+' : $pendingOrdersCount }}</span>
                 @endif
@@ -231,7 +232,7 @@
             </a>
 
             {{-- Cart with item count badge --}}
-            <a href="{{ route('user.cart.index') }}" class="relative bg-white rounded-2xl p-4 shadow-card hover:shadow-card-hover transition-all group">
+            <a href="{{ route('user.cart.index') }}" class="quick-action relative bg-white rounded-2xl p-4 shadow-card group">
                 @if(($cartItemsCount ?? 0) > 0)
                 <span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-accent text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 z-10">{{ $cartItemsCount }}</span>
                 @endif
@@ -243,7 +244,7 @@
             </a>
 
             {{-- Notifications with unread badge --}}
-            <a href="{{ route('user.notifications.index') }}" class="relative bg-white rounded-2xl p-4 shadow-card hover:shadow-card-hover transition-all group">
+            <a href="{{ route('user.notifications.index') }}" class="quick-action relative bg-white rounded-2xl p-4 shadow-card group">
                 @if(($unreadNotificationsCount ?? 0) > 0)
                 <span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 z-10">{{ ($unreadNotificationsCount > 9) ? '9+' : $unreadNotificationsCount }}</span>
                 @endif
@@ -255,7 +256,7 @@
             </a>
 
             {{-- Find Product --}}
-            <a href="{{ route('user.scraper.index') }}" class="bg-white rounded-2xl p-4 shadow-card hover:shadow-card-hover transition-all group">
+            <a href="{{ route('user.scraper.index') }}" class="quick-action bg-white rounded-2xl p-4 shadow-card group">
                 <div class="w-11 h-11 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-sm">
                     <i class="fas fa-search text-white text-base"></i>
                 </div>

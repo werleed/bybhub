@@ -104,6 +104,26 @@ h1,h2,h3,.font-display{font-family:'Poppins',sans-serif}
 .animate-bounce-soft{animation:bounce-soft 2s ease-in-out infinite}
 .skeleton{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
 
+/* ── Professional dashboard & card upgrades ── */
+.stat-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(26,58,107,0.12); }
+.quick-action { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.quick-action:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(26,58,107,0.10); }
+.quick-action:active { transform: scale(0.97); }
+
+/* Gradient text */
+.gradient-text-accent { background: linear-gradient(135deg,#F47B20,#D4660E); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+
+/* Page header gradient bar */
+.page-header-bar { background: linear-gradient(135deg, #1A3A6B 0%, #2451A3 50%, #1A3A6B 100%); }
+
+/* Table row hover */
+.table-row-hover:hover { background: rgba(26,58,107,0.03); }
+
+/* Animated counter */
+@keyframes count-up { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.count-animate { animation: count-up 0.5s ease forwards; }
+
 /* ── Reusable badge counter ── */
 /* .byb-badge: a round pill badge used on nav icons, bottom tabs, etc.       */
 /* Usage: <span class="byb-badge">3</span>  or  <span class="byb-badge byb-badge--dot"></span> */
@@ -641,9 +661,23 @@ body{margin:0;font-family:Inter,sans-serif;overflow-x:hidden;overflow-y:auto;min
 </div>
 
 {{-- MAIN NAVBAR --}}
-<nav class="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-100" x-data="{ mob: false, search: false }">
+<nav class="bg-white sticky top-0 z-50 border-b border-gray-100 transition-all duration-300"
+     :class="scrolled ? 'shadow-lg' : 'shadow-sm'"
+     x-data="{
+        mob: false,
+        search: false,
+        scrolled: false,
+        init() {
+            window.addEventListener('scroll', () => {
+                this.scrolled = window.scrollY > 10;
+            }, { passive: true });
+        }
+     }">
     <div class="max-w-7xl mx-auto px-4 lg:px-6">
-        <div class="flex items-center h-[56px] lg:h-[70px] gap-4">
+        {{-- Animated top accent line --}}
+        <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-accent to-primary opacity-80"></div>
+        <div class="flex items-center gap-4 transition-all duration-300"
+             :class="scrolled ? 'h-[52px]' : 'h-[56px] lg:h-[70px]'">
 
             {{-- Logo --}}
             <a href="{{ route('home') }}" class="flex-shrink-0">
@@ -850,8 +884,12 @@ body{margin:0;font-family:Inter,sans-serif;overflow-x:hidden;overflow-y:auto;min
                 <a href="{{ route('login') }}" class="hidden md:block text-sm font-semibold text-gray-600 hover:text-primary transition px-3 py-2">Sign In</a>
                 <a href="{{ route('register') }}" class="bg-accent hover:bg-accent-dark text-white text-sm font-bold px-5 py-2.5 rounded-xl transition btn-glow">Get Started</a>
                 @endauth
-                <button @click="mob=!mob" class="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 ml-1">
-                    <i class="fas text-sm" :class="mob?'fa-times':'fa-bars'"></i>
+                <button @click="mob=!mob" class="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 ml-1 transition-all duration-200" aria-label="Menu">
+                    <div class="w-5 h-5 flex flex-col justify-center gap-[5px] relative">
+                        <span class="block h-0.5 bg-gray-600 rounded-full transition-all duration-300 origin-center" :class="mob ? 'rotate-45 translate-y-[7px]' : ''"></span>
+                        <span class="block h-0.5 bg-gray-600 rounded-full transition-all duration-200" :class="mob ? 'opacity-0 scale-x-0' : ''"></span>
+                        <span class="block h-0.5 bg-gray-600 rounded-full transition-all duration-300 origin-center" :class="mob ? '-rotate-45 -translate-y-[7px]' : ''"></span>
+                    </div>
                 </button>
             </div>
         </div>
@@ -879,7 +917,14 @@ body{margin:0;font-family:Inter,sans-serif;overflow-x:hidden;overflow-y:auto;min
         </div>
 
         {{-- Mobile menu --}}
-        <div x-show="mob" x-transition class="lg:hidden pb-4 border-t border-gray-100 pt-3">
+        <div x-show="mob"
+             x-transition:enter="transition ease-out duration-250"
+             x-transition:enter-start="opacity-0 -translate-y-3"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-2"
+             class="lg:hidden pb-4 border-t border-gray-100 pt-3">
             {{-- Public links --}}
             <a href="{{ route('hub.home') }}" class="block px-3 py-2.5 rounded-xl text-sm font-bold hover:bg-hub-50 transition" style="color:#7C3AED">🎓 BYBLEARN — Learn & Earn</a>
             <a href="{{ route('home') }}" class="block px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-primary-50 hover:text-primary transition">🏠 {{ __('app.home') }}</a>
@@ -1408,7 +1453,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ],
         input: '',
         showTooltip: false,
-        init() { setTimeout(() => this.showTooltip = true, 4000); setTimeout(() => this.showTooltip = false, 9000); },
+        init() {
+            // Tooltip only shows on hover of the FAB button, never auto-pops
+        },
         async send() {
             const q = this.input.trim();
             if (!q || this.loading) return;
@@ -1528,6 +1575,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     {{-- Floating button --}}
     <button @click="open=!open; showTooltip=false"
+            @mouseenter="if(!open) showTooltip=true"
+            @mouseleave="showTooltip=false"
             class="relative w-14 h-14 rounded-full text-white shadow-2xl transition hover:scale-110 active:scale-95 flex items-center justify-center"
             style="background:linear-gradient(135deg,#1A3A6B,#F47B20);box-shadow:0 6px 30px rgba(26,58,107,0.5)">
         <span class="absolute inset-0 rounded-full animate-ping opacity-15" style="background:#1A3A6B"></span>
