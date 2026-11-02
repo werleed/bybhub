@@ -1,0 +1,35 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Main app layout (layouts/app.blade.php) PWA mobile redesign. Three targeted changes: (A) Redesign the PWA bottom navigation bar from 5 generic tabs to 5 PWA-quality tabs (Home, Shop, Import FAB, Orders, Account) with active state top-border indicator and proper active detection. (B) Fix the chat FAB bottom position on mobile — it currently overlaps the bottom nav at bottom-6; move to bottom-[80px] sm:bottom-6. (C) Fix the chatbot initial greeting to remove the scripted how-to-order content. (D) Rewrite offline.blade.php as standalone HTML (no Blade/PHP) so it works as a true PWA offline fallback. (E) Mobile navbar height: add h-[56px] lg:h-[70px] to the inner header flex div and shrink the logo on mobile.",
+  "status": "completed",
+  "steps": [
+    "Read resources/views/layouts/app.blade.php in full before editing — it is a very large file; read all sections.",
+    "CHANGE A — Bottom nav: Find the <nav id='pwa-bottom-nav'> block (inside @auth...@endauth near the end of the file). Replace the entire nav block (from <nav id='pwa-bottom-nav' to its closing </nav>) with the new 5-tab design described in the implementation plan (pwa-impl-plan.md section 5b). The new tabs are: Home (fa-home, route('home')), Shop (fa-shopping-bag, route('products.index')), Import/Store FAB (fa-link or fa-store if vendor, accent gradient circle, route('user.scraper.index') or route('vendor.orders.index')), Orders (fa-box, route('user.orders.index')), Account (fa-user-circle, route('user.profile')). Each non-FAB tab gets a 2px top-border active indicator (w-8 h-0.5 bg-primary rounded-full absolute top-0). Account tab shows the unread notification dot. PRESERVE all @php vars ($currentPath, $isVendor, $unread, $cartCount) and the @endauth closing directive.",
+    "CHANGE B — Chat FAB position: Find the line 'class=\"fixed bottom-6 right-5 z-[100] flex flex-col items-end gap-2\"' and change 'bottom-6' to 'bottom-[80px] sm:bottom-6'. Also find 'class=\"fixed bottom-20 left-4 right-4 z-50\"' on the pwa-install-banner div and change 'bottom-20' to 'bottom-[88px] sm:bottom-20'.",
+    "CHANGE C — Chatbot greeting: Find the Alpine x-data block for the chat assistant. Find the messages array initialization: messages: [ { from: 'bot', text: '...' } ]. Replace the greeting text with: '👋 Hi! I\\'m the BYBHUB Assistant. Ask me anything!' — short and neutral, not scripted.",
+    "CHANGE D — Read resources/views/offline.blade.php in full. Rewrite it as a completely standalone HTML file (no @extends, no @section, no @yield, no PHP helpers like asset(), route(), auth()). Use hardcoded /images/logo.jpg path (not asset()). Include inline Tailwind CDN script and a minimal SVG wifi-off icon. Match the design system colors (#1A3A6B, #F47B20, #F8FAFC). The file must be valid HTML that a service worker can serve without any PHP processing. Remove all Blade syntax.",
+    "CHANGE E — Mobile navbar height: Find '<div class=\"flex items-center h-[70px] gap-4\">' in the <nav> and change to '<div class=\"flex items-center h-[56px] lg:h-[70px] gap-4\">'. Find the logo <img> inside the navbar and update its inline style from 'height:48px;width:160px' to use responsive classes: add class='h-9 lg:h-12 w-auto' and style='max-width:140px;object-fit:contain;background:white;border-radius:12px;padding:4px 8px;display:block'."
+  ],
+  "acceptance_criteria": [
+    "Bottom nav shows 5 tabs: Home, Shop, Import (accent FAB, pops above bar), Orders, Account",
+    "Active tab has a 2px top border indicator in #1A3A6B color; inactive tabs are text-gray-400",
+    "Account tab shows red dot badge when there are unread notifications",
+    "Chat FAB is visible above the bottom nav (not overlapping it) on mobile at 375px viewport",
+    "Install banner is positioned above the chat FAB (not hidden behind the nav)",
+    "Chatbot opening message is a short neutral greeting (no scripted how-to-order content)",
+    "offline.blade.php renders as valid HTML with no PHP errors when served as a static file",
+    "Mobile navbar is 56px tall (not 70px) on screens narrower than 640px",
+    "Desktop layout (lg:) is unchanged"
+  ],
+  "verification": [
+    "php artisan view:clear && php artisan cache:clear",
+    "Open http://127.0.0.1:8001 at 375px viewport — confirm bottom nav shows 5 tabs with correct icons and labels",
+    "Log in, then open any page — confirm chat FAB floats above the bottom nav without overlapping",
+    "Click the chat FAB — confirm the greeting is short and neutral",
+    "Open http://127.0.0.1:8001/offline in browser — confirm it renders as a proper standalone page with no Blade/PHP errors",
+    "On desktop (1280px width) — confirm navbar is still 70px, footer is intact, bottom nav is hidden (sm:hidden)"
+  ],
+  "blocked_reason": null,
+  "findings": "All 5 changes implemented: (A) Bottom nav replaced with 5-tab design — Home, Shop, Import FAB (accent gradient circle), Orders, Account — each non-FAB tab has a 2px top-border active indicator; Account shows red dot badge when unread notifications exist. (B) Chat FAB moved to bottom-[80px] sm:bottom-6; install banner moved to bottom-[88px] sm:bottom-20. (C) Chatbot greeting shortened to neutral one-liner. (D) offline.blade.php rewritten as standalone HTML — no Blade/PHP, uses inline SVG icons, hardcoded /images/logo.jpg, inline Tailwind CDN. (E) Navbar inner div changed to h-[56px] lg:h-[70px]; logo img updated to h-9 lg:h-12 w-auto with max-width:140px. No git repository found in workspace — commit skipped."
+}

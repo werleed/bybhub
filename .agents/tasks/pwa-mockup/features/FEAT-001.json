@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Auth layout and auth pages redesign. Remove the <footer> block from layouts/auth.blade.php (user requirement: no footer on auth pages). Add a minimal copyright line inside <main>. Add 'Back to Home' link above the logo on login, register, and forgot-password pages. Apply mobile-first polish (pb-safe, safe viewport centering). These changes affect all auth pages because they share the layout.",
+  "status": "completed",
+  "steps": [
+    "Read resources/views/layouts/auth.blade.php in full before editing.",
+    "In layouts/auth.blade.php: remove the entire <footer class='relative z-10 pb-safe'> block (lines containing the links row, trust row, and copyright paragraph). Replace with a single copyright line inside <main> after @yield('content'): <p class='text-center text-blue-300/30 text-[10px] mt-6' style='padding-bottom:max(env(safe-area-inset-bottom,0px),16px)'>&copy; {{ date('Y') }} BYBHUB &middot; bybimport.com</p>",
+    "In layouts/auth.blade.php: on the <main> tag, change class from 'relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-8 pb-6' to 'relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-6 sm:py-8' — removes fixed pb-6, reduces top py on small phones.",
+    "Read resources/views/auth/login.blade.php in full before editing.",
+    "In auth/login.blade.php: inside the <div class='w-full max-w-sm anim-fade-up'>, add the back-link div as the very first child (before the logo/headline div): <div class='mb-4 text-center'><a href=\"{{ route('home') }}\" class='inline-flex items-center gap-1.5 text-blue-300/70 hover:text-white text-xs font-medium transition'><i class='fas fa-arrow-left text-[10px]'></i> Back to BYBHUB</a></div>",
+    "Read resources/views/auth/register.blade.php in full before editing.",
+    "In auth/register.blade.php: inside the <div class='w-full max-w-md anim-fade-up'>, add the same back-link div as the very first child.",
+    "Read resources/views/auth/forgot-password.blade.php in full before editing.",
+    "In auth/forgot-password.blade.php: inside the <div class='w-full max-w-sm anim-fade-up'>, add the same back-link div as the very first child."
+  ],
+  "acceptance_criteria": [
+    "Visiting /login shows NO footer (no Home/Terms/Contact/About/Products links row, no SSL/Support trust row, no copyright paragraph in a <footer> tag) — only the minimal copyright inside the card area",
+    "Visiting /register shows the same — no footer block",
+    "Visiting /password/reset shows the same — no footer block",
+    "Each auth page has a 'Back to BYBHUB' link above the logo",
+    "Auth pages render without PHP errors after view:clear"
+  ],
+  "verification": [
+    "php artisan view:clear && php artisan cache:clear",
+    "Open http://127.0.0.1:8001/login in browser — confirm no footer links/trust bar below the card",
+    "Open http://127.0.0.1:8001/register — confirm no footer, back link visible above logo",
+    "Open http://127.0.0.1:8001/password/reset — confirm no footer, back link visible"
+  ],
+  "blocked_reason": null,
+  "findings": "Removed <footer> block from layouts/auth.blade.php. Replaced with a single minimal copyright <p> inside <main> after @yield('content'). Updated <main> class from 'py-8 pb-6' to 'py-6 sm:py-8'. Added 'Back to BYBHUB' back-link div as first child inside the top-level wrapper div in login.blade.php, register.blade.php, and forgot-password.blade.php. All auth pages verified to compile cleanly after php artisan view:clear. No git repository found in project root — commit step skipped."
+}
