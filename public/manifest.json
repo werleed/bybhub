@@ -1,0 +1,135 @@
+{
+  "name": "BYBHUB — China to Your Door",
+  "short_name": "BYBHUB",
+  "description": "Shop from 1688, Taobao & Alibaba. We buy products in China and deliver to Nigeria, Ghana, and Niger. Browse local Nigerian vendors too. Fast, reliable, transparent.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui", "browser"],
+  "orientation": "portrait-primary",
+  "background_color": "#1A3A6B",
+  "theme_color": "#1A3A6B",
+  "lang": "en",
+  "dir": "ltr",
+  "id": "com.bybimport.app",
+
+  "icons": [
+    {
+      "src": "/images/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/images/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/images/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+
+  "screenshots": [
+    {
+      "src": "/images/screenshots/home.svg",
+      "sizes": "390x844",
+      "type": "image/svg+xml",
+      "form_factor": "narrow",
+      "label": "Browse China import products and local Nigerian vendors"
+    },
+    {
+      "src": "/images/screenshots/products.svg",
+      "sizes": "390x844",
+      "type": "image/svg+xml",
+      "form_factor": "narrow",
+      "label": "Search and filter thousands of products from China"
+    },
+    {
+      "src": "/images/screenshots/wallet.svg",
+      "sizes": "390x844",
+      "type": "image/svg+xml",
+      "form_factor": "narrow",
+      "label": "Manage your wallet — fund, send, and pay instantly"
+    },
+    {
+      "src": "/images/screenshots/orders.svg",
+      "sizes": "390x844",
+      "type": "image/svg+xml",
+      "form_factor": "narrow",
+      "label": "Track your orders every step from China to your door"
+    }
+  ],
+
+  "categories": ["shopping", "lifestyle", "finance"],
+
+  "shortcuts": [
+    {
+      "name": "Shop Products",
+      "short_name": "Shop",
+      "description": "Browse China import and local products",
+      "url": "/products?source=pwa-shortcut",
+      "icons": [{ "src": "/images/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "My Orders",
+      "short_name": "Orders",
+      "description": "Track and manage your orders",
+      "url": "/dashboard/orders?source=pwa-shortcut",
+      "icons": [{ "src": "/images/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "My Wallet",
+      "short_name": "Wallet",
+      "description": "Check balance and fund wallet",
+      "url": "/dashboard/wallet?source=pwa-shortcut",
+      "icons": [{ "src": "/images/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Track Order",
+      "short_name": "Track",
+      "description": "Track your shipment",
+      "url": "/track?source=pwa-shortcut",
+      "icons": [{ "src": "/images/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ],
+
+  "prefer_related_applications": false,
+
+  "share_target": {
+    "action": "/dashboard/scraper",
+    "method": "GET",
+    "params": {
+      "url": "url",
+      "text": "url"
+    }
+  }
+}

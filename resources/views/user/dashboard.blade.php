@@ -5,6 +5,58 @@
 
     <h2 class="text-xl font-bold text-primary mb-4 sm:hidden" style="font-family:Poppins,sans-serif">Dashboard</h2>
 
+    {{-- ── Clipboard product-link detection ─────────────────────────────── --}}
+    <div x-data="{
+        detected: null,
+        dismissedUrl: localStorage.getItem('clip_dismissed_url') || '',
+        supported: typeof navigator !== 'undefined' && !!navigator.clipboard && typeof navigator.clipboard.readText === 'function',
+        async check() {
+            if (!this.supported) return;
+            try {
+                const text = await navigator.clipboard.readText();
+                const m = String(text).match(/https?:\/\/[^\s<>()\]\x22']+/i);
+                if (!m) return;
+                const url = m[0];
+                if (!/(1688|taobao|tmall|alibaba|aliexpress)\.com/i.test(url)) return;
+                if (this.dismissedUrl === url) return;
+                let host = url;
+                try { host = new URL(url).hostname.replace(/^www\./, ''); } catch(e) {}
+                this.detected = { url, host };
+            } catch(e) { /* needs gesture/permission — ignore */ }
+        },
+        go() {
+            window.location = '{{ route('user.scraper.index') }}?url=' + encodeURIComponent(this.detected.url);
+        },
+        dismiss() {
+            if (this.detected) {
+                localStorage.setItem('clip_dismissed_url', this.detected.url);
+                this.detected = null;
+            }
+        }
+    }" x-init="$nextTick(() => {
+        setTimeout(() => check(), 600);
+        document.addEventListener('visibilitychange', () => { if(!document.hidden) check(); });
+    })">
+        <div x-show="detected" x-cloak x-transition
+             class="rounded-2xl p-4 flex items-center gap-3 border"
+             style="display:none;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border-color:#6ee7b7;">
+            <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-clipboard-check text-green-600"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="font-bold text-green-800 text-sm leading-tight">Product link detected on your clipboard</p>
+                <p class="text-xs text-green-700 truncate" x-text="detected?.host"></p>
+            </div>
+            <button type="button" @click="go()"
+                    class="flex-shrink-0 bg-accent hover:bg-accent-dark active:scale-95 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5">
+                <i class="fas fa-bolt text-[10px]"></i> Import
+            </button>
+            <button type="button" @click="dismiss()" class="text-green-700/60 hover:text-green-800 text-sm px-1" aria-label="Dismiss">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
     {{-- ── Email verification reminder ───────────────────────────────────── --}}
     @if(!$user->hasVerifiedEmail())
     <div class="rounded-2xl p-4 flex flex-wrap items-center gap-4 border"

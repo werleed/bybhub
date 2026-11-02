@@ -28,6 +28,8 @@
 <link rel="apple-touch-icon" href="{{ asset('images/apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="152x152" href="{{ asset('images/apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/apple-touch-icon.png') }}">
+{{-- Preload SVG icon so browsers can pick it up quickly for bookmarks/tabs --}}
+<link rel="icon" type="image/svg+xml" href="{{ asset('images/icon.svg') }}">
 <link rel="manifest" href="{{ asset('manifest.json') }}">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -101,10 +103,156 @@ h1,h2,h3,.font-display{font-family:'Poppins',sans-serif}
 .animate-float2{animation:float2 4s ease-in-out infinite}
 .animate-bounce-soft{animation:bounce-soft 2s ease-in-out infinite}
 .skeleton{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
+
+/* ── Reusable badge counter ── */
+/* .byb-badge: a round pill badge used on nav icons, bottom tabs, etc.       */
+/* Usage: <span class="byb-badge">3</span>  or  <span class="byb-badge byb-badge--dot"></span> */
+.byb-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9999px;
+    background: #EF4444;      /* red-500 */
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    font-family: 'Inter', ui-sans-serif, system-ui;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(239,68,68,0.35);
+    pointer-events: none;
+    user-select: none;
+}
+.byb-badge--dot {
+    min-width: 10px;
+    height: 10px;
+    padding: 0;
+    border-width: 1.5px;
+}
+.byb-badge--accent {
+    background: #F47B20;      /* accent orange — for cart */
+}
+.byb-badge--sm {
+    min-width: 16px;
+    height: 16px;
+    font-size: 9px;
+    border-width: 1.5px;
+}
+@keyframes badge-pop {
+    0%   { transform: scale(0.7); opacity: 0; }
+    60%  { transform: scale(1.25); }
+    100% { transform: scale(1); opacity: 1; }
+}
+.byb-badge-enter { animation: badge-pop 0.25s cubic-bezier(.4,0,.2,1) forwards; }
 </style>
 @stack('styles')
-</head>
+
+{{-- ── BYBHUB Live Badge Store ──────────────────────────────────────────────
+     Initialised before Alpine boots (defer on Alpine means it reads x-data
+     at DOMContentLoaded; document.addEventListener fires before that when
+     placed here).  This block is only emitted for authenticated users so
+     the poll never fires for guests.
+--}}
+@auth
+<script>
+// Seed the initial server-side counts so the first render is instant.
+// These are refreshed immediately by the poll / SW message in background.
+window._bybInitCounts = {
+    unread:       {{ (int) auth()->user()->unreadNotificationsCount() }},
+    cart:         {{ (int) \App\Models\CartItem::where('user_id', auth()->id())->count() }},
+    // Active (in-progress) orders — excludes terminal states.
+    activeOrders: {{ (int) \App\Models\Order::where('user_id', auth()->id())
+        ->whereNotIn('status', ['delivered','cancelled','refunded',''])
+        ->whereNotIn('local_order_status', ['delivered','completed','cancelled','refunded','disputed',''])
+        ->count() }},
+};
+</script>
+@endauth
 <body class="text-gray-800 antialiased">
+
+@auth
+{{-- ── Live Badge Alpine Store ─────────────────────────────────────────────
+     Registers `Alpine.store('badge', { unread, cart, activeOrders })`
+     which all badge UI in this layout reads from.
+
+     Behaviour:
+     • Seeded instantly from server-side counts (no flash of empty badge).
+     • Polls /api/notifications/unread-count every 3 minutes while tab is visible.
+     • Listens for service worker postMessage to get push-triggered updates instantly.
+     • Updates document.title with "(N) BYBHUB" as an iOS Safari fallback — iOS
+       does not support the Web App Badging API.
+     • Clears the title count when the user visits the notifications page.
+--}}
+<script>
+document.addEventListener('alpine:init', function () {
+    const init = window._bybInitCounts || { unread: 0, cart: 0, activeOrders: 0 };
+
+    Alpine.store('badge', {
+        unread:       init.unread,
+        cart:         init.cart,
+        activeOrders: init.activeOrders,
+
+        // Apply counts to OS badge + document title
+        _apply(unread) {
+            this.unread = unread;
+            // iOS Safari title fallback — shows "(2) BYBHUB" in the tab
+            const base = 'BYBHUB — Bringing China Closer to You';
+            document.title = unread > 0
+                ? `(${unread > 99 ? '99+' : unread}) ${document.title.replace(/^\(\d+\+?\)\s*/, '')}`
+                : document.title.replace(/^\(\d+\+?\)\s*/, '');
+        },
+
+        // Poll /api/notifications/unread-count (called on load + every 3 min)
+        async poll() {
+            try {
+                const r = await fetch('/api/notifications/unread-count', { credentials: 'include' });
+                if (r.ok) {
+                    const { count = 0 } = await r.json();
+                    this._apply(count);
+                }
+            } catch (_) { /* offline — keep stale count */ }
+        },
+
+        // Called when user visits the notifications page to clear counts
+        clearUnread() {
+            this._apply(0);
+            // Tell the SW to refresh the OS badge too
+            if (navigator.serviceWorker?.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'BYBHUB_REFRESH_BADGE' });
+            }
+        },
+
+        init() {
+            // Apply the seeded count to title immediately
+            this._apply(init.unread);
+
+            // Poll on tab focus + every 3 minutes while visible
+            this.poll();
+            setInterval(() => {
+                if (!document.hidden) this.poll();
+            }, 3 * 60 * 1000);
+
+            // React to SW push messages (works on Android/Desktop; iOS SW is limited)
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    if (event.data?.type === 'BYBHUB_UNREAD_COUNT') {
+                        this._apply(event.data.count ?? 0);
+                    }
+                });
+            }
+
+            // Re-poll when tab becomes visible again (e.g. user switches back)
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) this.poll();
+            });
+        },
+    });
+});
+</script>
+@endauth
 
 {{-- Impersonation banner --}}
 @if(session('admin_impersonating'))
@@ -546,12 +694,24 @@ body{margin:0;font-family:Inter,sans-serif;overflow-x:hidden;overflow-y:auto;min
                 <a href="{{ route('user.cart.index') }}" class="relative w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:text-primary hover:bg-gray-100 transition">
                     <i class="fas fa-shopping-cart text-sm"></i>
                     @php $cc=\App\Models\CartItem::where('user_id',auth()->id())->count() @endphp
-                    @if($cc)<span class="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] bg-accent text-white text-[10px] rounded-full flex items-center justify-center font-bold leading-none">{{ $cc }}</span>@endif
+                    <span x-data
+                          x-show="$store.badge.cart > 0"
+                          x-text="$store.badge.cart > 9 ? '9+' : $store.badge.cart"
+                          class="byb-badge byb-badge--accent absolute -top-0.5 -right-0.5"
+                          style="{{ $cc > 0 ? '' : 'display:none' }}">{{ $cc > 9 ? '9+' : $cc }}</span>
                 </a>
-                <a href="{{ route('user.notifications.index') }}" class="relative w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:text-primary hover:bg-gray-100 transition">
+                <a href="{{ route('user.notifications.index') }}" class="relative w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:text-primary hover:bg-gray-100 transition"
+                   @click="$store.badge.clearUnread()">
                     <i class="fas fa-bell text-sm"></i>
+                    {{-- Static seed (no Alpine flash) replaced immediately by Alpine --}}
                     @php $nc=auth()->user()->unreadNotificationsCount() @endphp
-                    @if($nc)<span class="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">{{ $nc>9?'9+':$nc }}</span>@endif
+                    <span id="header-bell-badge"
+                          x-data
+                          x-show="$store.badge.unread > 0"
+                          x-text="$store.badge.unread > 9 ? '9+' : $store.badge.unread"
+                          :class="{'byb-badge-enter': $store.badge.unread > 0}"
+                          class="byb-badge absolute -top-0.5 -right-0.5"
+                          style="{{ $nc > 0 ? '' : 'display:none' }}">{{ $nc > 9 ? '9+' : $nc }}</span>
                 </a>
                 @php
                     $walletSym  = \App\Helpers\CurrencyHelper::symbol(auth()->user()->currency);
@@ -1595,7 +1755,16 @@ document.addEventListener('DOMContentLoaded', () => {
             @if($ordersActive)
             <span class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full"></span>
             @endif
-            <i class="fas fa-box text-lg leading-none"></i>
+            <div class="relative">
+                <i class="fas fa-box text-lg leading-none"></i>
+                {{-- Active-orders badge: shows count of in-progress orders --}}
+                <span x-data
+                      x-show="$store.badge.activeOrders > 0"
+                      x-text="$store.badge.activeOrders > 9 ? '9+' : $store.badge.activeOrders"
+                      class="byb-badge byb-badge--sm absolute -top-1 -right-2"
+                      @php $ao = \App\Models\Order::where('user_id', auth()->id())->whereNotIn('status',['delivered','cancelled','refunded',''])->whereNotIn('local_order_status',['delivered','completed','cancelled','refunded','disputed',null])->count(); @endphp
+                      style="{{ $ao > 0 ? '' : 'display:none' }}">{{ $ao > 9 ? '9+' : $ao }}</span>
+            </div>
             <span class="text-[10px] font-semibold leading-none mt-0.5">Orders</span>
         </a>
 
@@ -1603,15 +1772,20 @@ document.addEventListener('DOMContentLoaded', () => {
         @php $accountActive = str_starts_with($currentPath, 'dashboard/profile') || str_starts_with($currentPath, 'dashboard/account'); @endphp
         <a href="{{ route('user.profile') }}"
            class="flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors
-                  {{ $accountActive ? 'text-primary' : 'text-gray-400 hover:text-primary' }}">
+                  {{ $accountActive ? 'text-primary' : 'text-gray-400 hover:text-primary' }}"
+           @click="$store.badge.clearUnread()">
             @if($accountActive)
             <span class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full"></span>
             @endif
             <div class="relative">
                 <i class="fas fa-user-circle text-lg leading-none"></i>
-                @if($unread > 0)
-                <span class="absolute -top-1 -right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-                @endif
+                {{-- Numeric unread badge (replaces the old plain dot) --}}
+                @php $unread = auth()->user()->unreadNotificationsCount(); @endphp
+                <span x-data
+                      x-show="$store.badge.unread > 0"
+                      x-text="$store.badge.unread > 9 ? '9+' : $store.badge.unread"
+                      class="byb-badge byb-badge--dot absolute -top-1 -right-1.5"
+                      style="{{ $unread > 0 ? '' : 'display:none' }}"></span>
             </div>
             <span class="text-[10px] font-semibold leading-none mt-0.5">Account</span>
         </a>
