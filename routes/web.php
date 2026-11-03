@@ -510,6 +510,8 @@ Route::middleware(['auth', 'admin', 'set.locale'])->prefix('admin')->name('admin
         Route::get('/scrape', [AdminProductController::class, 'scrapeImport'])->name('scrape');
         Route::post('/scrape/preview', [AdminProductController::class, 'scrapePreview'])->name('scrape.preview');
         Route::post('/scrape/save', [AdminProductController::class, 'scrapeStore'])->name('scrape.store');
+        Route::get('/csv-import', [AdminProductController::class, 'csvImportForm'])->name('csv-import');
+        Route::post('/csv-import', [AdminProductController::class, 'csvImport'])->name('csv-import.process');
         Route::get('/{product}/edit', [AdminProductController::class, 'edit'])->name('edit');
         Route::patch('/{product}', [AdminProductController::class, 'update'])->name('update');
         Route::delete('/{product}', [AdminProductController::class, 'destroy'])->name('destroy');

@@ -191,7 +191,8 @@ function scraperImport() {
         showForm: false,
         scraped: {
             source: '', source_url: '', title: '', price_cny: '', price_max: null,
-            weight_kg: '', moq: 1, description: '', images: [], variants: []
+            weight_kg: '', moq: 1, description: '', images: [], variants: [],
+            price_note: null
         },
 
         init() {
@@ -228,6 +229,7 @@ function scraperImport() {
                         description: data.description || '',
                         images:      data.images      || [],
                         variants:    data.variants    || [],
+                        price_note:  data.price_note  || null,
                     };
                     this.showForm = true;
                 } else {

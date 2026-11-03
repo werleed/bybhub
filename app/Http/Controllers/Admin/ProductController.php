@@ -129,7 +129,160 @@ class ProductController extends Controller
         return redirect()->route('admin.products.index')->with('success', 'Product deleted.');
     }
 
-    // ── Admin Scraper Import (AliExpress / Alibaba / 1688 / Taobao) ───────────
+    // ── CSV Import (AliExpress product export CSV) ────────────────────────────
+
+    public function csvImportForm()
+    {
+        $categories = Category::where('is_active', true)->get();
+        return view('admin.products.csv-import', compact('categories'));
+    }
+
+    /**
+     * Process AliExpress CSV export.
+     *
+     * CSV columns used:
+     *  Title, Product Image Url, Sale price, Sale price formatted,
+     *  Product description html, Main images url, Product Id, Product url,
+     *  Attribute 1 name, Attribute 1 value(s), Attribute 2 name, Attribute 2 value(s)
+     *
+     * Price is in NGN in the CSV. We divide by the live NGN/CNY rate to store as CNY.
+     */
+    public function csvImport(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'csv_file'    => 'required|file|mimes:csv,txt|max:10240',
+            'category_id' => 'nullable|exists:categories,id',
+        ]);
+
+        // Live NGN→CNY rate for price conversion
+        $ngnRate = (float) (\App\Models\ExchangeRate::where('from_currency', 'CNY')
+            ->where('to_currency', 'NGN')
+            ->value('rate') ?? 222);
+
+        $file    = $request->file('csv_file');
+        $handle  = fopen($file->getRealPath(), 'r');
+
+        // Read header row
+        $header = fgetcsv($handle);
+        // Normalise headers: lowercase + trim
+        $header = array_map(fn($h) => strtolower(trim(preg_replace('/[^a-z0-9 ]/i', '', $h))), $header);
+
+        $col = fn(string $name) => array_search($name, $header);
+
+        $imported = 0;
+        $skipped  = 0;
+        $errors   = [];
+
+        while (($row = fgetcsv($handle)) !== false) {
+            try {
+                // Skip empty rows
+                if (empty(array_filter($row))) { $skipped++; continue; }
+
+                // Map by column index
+                $get = function (string $colName) use ($row, $col) {
+                    $idx = $col($colName);
+                    return ($idx !== false && isset($row[$idx])) ? trim($row[$idx]) : '';
+                };
+
+                $title = $get('title');
+                if (!$title) { $skipped++; continue; }
+
+                // Price: "Sale price" column is numeric, "Sale price formatted" is human readable
+                $salePriceNgn = (float) ($get('sale price') ?: preg_replace('/[^\d.]/', '', $get('sale price formatted')));
+                $priceCny = $ngnRate > 0 && $salePriceNgn > 0
+                    ? round($salePriceNgn / $ngnRate, 2)
+                    : 0.01;
+
+                // Images: "Main images url" is comma-separated protocol-relative URLs
+                $rawImgs = $get('main images url');
+                $images  = [];
+                foreach (explode(',', $rawImgs) as $img) {
+                    $img = trim($img);
+                    if (!$img) continue;
+                    if (!str_starts_with($img, 'http')) $img = 'https:' . $img;
+                    $images[] = $img;
+                }
+                // Fallback to single Product Image Url
+                if (empty($images)) {
+                    $single = $get('product image url');
+                    if ($single) {
+                        if (!str_starts_with($single, 'http')) $single = 'https:' . $single;
+                        $images[] = $single;
+                    }
+                }
+
+                // Description: strip HTML tags from product description html
+                $descHtml = $get('product description html');
+                $desc     = $descHtml
+                    ? mb_substr(strip_tags(html_entity_decode($descHtml)), 0, 2000)
+                    : '';
+
+                // Variants from Attribute 1 / Attribute 2
+                $variants = [];
+                foreach ([['attribute 1 name','attribute 1 values'],['attribute 2 name','attribute 2 values']] as [$nameCol,$valCol]) {
+                    $attrName = $get($nameCol);
+                    $attrVals = $get($valCol);
+                    if ($attrName && $attrVals) {
+                        $opts = array_map(
+                            fn($v) => ['label' => trim($v), 'image' => null, 'price_cny' => null],
+                            array_filter(array_map('trim', explode(',', $attrVals)))
+                        );
+                        if (count($opts) > 0) {
+                            $variants[] = ['name' => $attrName, 'options' => array_values($opts)];
+                        }
+                    }
+                }
+
+                // Source URL
+                $sourceUrl = $get('product url');
+                $productId = $get('product id');
+                if (!$sourceUrl && $productId) {
+                    $sourceUrl = "https://www.aliexpress.com/item/{$productId}.html";
+                }
+
+                // Skip duplicate by source_url
+                if ($sourceUrl && \App\Models\Product::where('source_url', $sourceUrl)->exists()) {
+                    $skipped++;
+                    continue;
+                }
+
+                $slug = \Illuminate\Support\Str::slug(mb_substr($title, 0, 80));
+                if ($productId) $slug .= '-' . $productId;
+                if (\App\Models\Product::where('slug', $slug)->exists()) {
+                    $slug .= '-' . substr(md5(uniqid()), 0, 6);
+                }
+
+                \App\Models\Product::create([
+                    'title'        => $title,
+                    'slug'         => $slug,
+                    'price_cny'    => $priceCny,
+                    'images'       => array_slice($images, 0, 12),
+                    'description'  => $desc,
+                    'variants'     => $variants,
+                    'source'       => 'aliexpress',
+                    'source_url'   => $sourceUrl ?: null,
+                    'category_id'  => $request->category_id ?: null,
+                    'is_active'    => true,
+                    'is_approved'  => true,
+                    'stock_status' => 'in_stock',
+                    'added_by'     => auth()->id(),
+                ]);
+
+                $imported++;
+            } catch (\Exception $e) {
+                $errors[] = "Row " . ($imported + $skipped + 1) . ": " . $e->getMessage();
+                $skipped++;
+            }
+        }
+
+        fclose($handle);
+
+        $msg = "Import complete: {$imported} imported, {$skipped} skipped.";
+        if ($errors) $msg .= " Errors: " . implode('; ', array_slice($errors, 0, 3));
+
+        return redirect()->route('admin.products.index')
+            ->with('success', $msg);
+    }
 
     /**
      * Show the admin scrape-import page.
@@ -175,6 +328,7 @@ class ProductController extends Controller
             'moq'         => $data['moq']           ?? 1,
             'weight_kg'   => $data['weight_kg']     ?? null,
             'seller_name' => $data['seller_name']   ?? '',
+            'price_note'  => $data['price_note']    ?? null,
         ]);
     }
 
