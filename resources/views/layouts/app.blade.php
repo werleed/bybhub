@@ -166,7 +166,8 @@ h1,h2,h3,.font-display{font-family:'Poppins',sans-serif}
     60%  { transform: scale(1.25); }
     100% { transform: scale(1); opacity: 1; }
 }
-.byb-badge-enter { animation: badge-pop 0.25s cubic-bezier(.4,0,.2,1) forwards; }
+.badge-enter { animation: badge-pop 0.25s cubic-bezier(.4,0,.2,1) forwards; }
+[x-cloak] { display: none !important; }
 </style>
 @stack('styles')
 
@@ -628,9 +629,10 @@ body{margin:0;font-family:Inter,sans-serif;overflow-x:hidden;overflow-y:auto;min
 {{-- DYNAMIC ANNOUNCEMENT BAR --}}
 @php $announcementKey = 'bybhub_bar_' . md5($announcement . ($announcementOn ? '1' : '0')); @endphp
 <div class="bg-gradient-to-r from-primary-900 to-primary-800 text-white text-xs py-2 px-4 flex items-center justify-between" id="topBar"
-     x-data="{ show: true }"
+     x-data="{ show: false }"
      x-init="show = localStorage.getItem('{{ $announcementKey }}') !== '1'"
      x-show="show"
+     x-cloak
      x-transition:leave="transition duration-300"
      x-transition:leave-start="opacity-100 max-h-10"
      x-transition:leave-end="opacity-0 max-h-0 overflow-hidden">
@@ -1588,11 +1590,12 @@ document.addEventListener('DOMContentLoaded', () => {
     {{-- Chat popup card --}}
 {{-- old whatsapp widget removed --}}
 
-{{-- ── v1.1.0 Welcome Popup (shows once after login) ───────────────────── --}}
+{{-- ── v1.1.0 Welcome Popup (shows once per browser via cookie) ──────────── --}}
 @if(session('show_update_popup'))
 <?php session()->forget('show_update_popup'); ?>
-<div x-data="{ show: true, pwa: window.matchMedia('(display-mode: standalone)').matches }"
+<div x-data="{ show: true }"
      x-show="show"
+     x-init="document.cookie='v110_seen=1;path=/;max-age=31536000';"
      x-transition:enter="transition ease-out duration-300"
      x-transition:enter-start="opacity-0 translate-y-6"
      x-transition:enter-end="opacity-100 translate-y-0"
