@@ -120,6 +120,7 @@ Route::get('/shipping-calculator', [ShippingCalculatorController::class, 'index'
 Route::post('/shipping-calculator', [ShippingCalculatorController::class, 'calculate'])->name('shipping.calculate');
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+Route::get('/products/{product}/landed-cost', [ProductController::class, 'landedCost'])->name('products.landed-cost');
 Route::get('/categories/{category}', [ProductController::class, 'byCategory'])->name('products.category');
 
 // Local vendor order checkout (requires auth)
@@ -275,6 +276,8 @@ Route::middleware(['auth', 'set.locale'])->prefix('dashboard')->name('user.')->g
         Route::get('/', [OrderController::class, 'index'])->name('index');
         Route::post('/checkout', [OrderController::class, 'checkout'])->name('checkout');
         Route::post('/klump-complete', [OrderController::class, 'klumpComplete'])->name('klump-complete');
+        Route::post('/credpal-complete', [OrderController::class, 'credpalComplete'])->name('credpal-complete');
+        Route::post('/zilla-complete', [OrderController::class, 'zillaComplete'])->name('zilla-complete');
         Route::post('/consolidate', [OrderController::class, 'consolidate'])->name('consolidate');
         Route::get('/{order}', [OrderController::class, 'show'])->name('show');
         Route::post('/{order}/cancel', [OrderController::class, 'cancel'])->name('cancel');
