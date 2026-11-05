@@ -319,6 +319,9 @@ Route::middleware(['auth', 'set.locale'])->prefix('dashboard')->name('user.')->g
     // Coupon validation (AJAX at checkout)
     Route::post('/coupon/validate', [\App\Http\Controllers\User\CartController::class, 'validateCoupon'])->name('coupon.validate');
 
+    // Update product weight (AJAX — user corrects scraper-extracted weight)
+    Route::post('/product/{product}/weight', [\App\Http\Controllers\User\ScraperController::class, 'updateWeight'])->name('product.weight');
+
     // Spin & Win
     Route::get('/spin-and-win', [\App\Http\Controllers\User\SpinwinController::class, 'show'])->name('spinwin.show');
     Route::post('/spin-and-win/spin', [\App\Http\Controllers\User\SpinwinController::class, 'spin'])->name('spinwin.spin')->middleware('throttle:5,1');

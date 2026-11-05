@@ -192,6 +192,102 @@
                 </div>
                 @endif
 
+                {{-- ── Estimated Weight & Shipping Fee ──────────────────────── --}}
+                @php
+                    $estProduct = \App\Models\Product::find($data['product_id'] ?? null);
+                    $estWeight  = $estProduct ? $estProduct->getBillableWeight('sea') : 0.5;
+                    $estSymbol  = $data['symbol'] ?? auth()->user()->currencySymbol();
+                    $estRate    = (float)($data['rate'] ?? 205);
+                    $estCountry = auth()->user()->country;
+                    // Sea shipping per-kg rate from DB
+                    $seaRate = \App\Models\ShippingRate::where('country', $estCountry)
+                        ->where('method', 'sea_los')->where('is_active', true)->first();
+                    $seaPerKg = $seaRate ? (float)$seaRate->rate : 0;
+                    $seaRateCurrency = $seaRate->currency ?? 'NGN';
+                    // Convert per-kg rate to user's currency if needed
+                    if ($seaPerKg > 0 && $seaRateCurrency !== auth()->user()->currency) {
+                        $convertRate = \App\Models\ExchangeRate::getRate($seaRateCurrency, auth()->user()->currency);
+                        if ($convertRate > 0) $seaPerKg = $seaPerKg * $convertRate;
+                    }
+                    $isDefaultWeight = $estProduct && (float)($estProduct->weight_kg ?? 0) <= 0
+                        || (abs($estWeight - 0.5) < 0.001);
+                @endphp
+                @if($estProduct)
+                <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4"
+                     x-data="{
+                        weight: {{ $estWeight }},
+                        seaPerKg: {{ $seaPerKg }},
+                        editing: false,
+                        saving: false,
+                        saved: false,
+                        updateWeight() {
+                            this.saving = true;
+                            fetch('{{ route('user.product.weight', $estProduct->id) }}', {
+                                method: 'POST',
+                                headers: {'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'},
+                                body: JSON.stringify({weight_kg: this.weight})
+                            }).then(r => r.json()).then(d => {
+                                this.saving = false;
+                                if(d.success){ this.saved = true; this.editing = false; setTimeout(()=>this.saved=false, 2000); }
+                            });
+                        }
+                     }">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fas fa-weight-hanging text-blue-500"></i> Estimated Weight & Shipping
+                        </p>
+                        <button type="button" @click="editing = !editing"
+                            class="text-[11px] text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1">
+                            <i class="fas fa-edit text-[10px]"></i> Edit weight
+                        </button>
+                    </div>
+
+                    {{-- Weight display / edit --}}
+                    <div x-show="!editing" class="flex items-center gap-3 text-sm">
+                        <span class="text-gray-600">Item weight:</span>
+                        <span class="font-bold text-blue-800" x-text="weight.toFixed(2) + ' kg'">{{ number_format($estWeight, 2) }} kg</span>
+                        @if($isDefaultWeight)
+                        <span class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Estimated</span>
+                        @endif
+                    </div>
+                    <div x-show="editing" x-transition class="flex items-center gap-2">
+                        <input type="number" x-model.number="weight" step="0.1" min="0.1"
+                            class="w-20 border-2 border-blue-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400">
+                        <span class="text-sm text-gray-500">kg</span>
+                        <button type="button" @click="updateWeight()" :disabled="saving"
+                            class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">
+                            <span x-text="saving ? 'Saving...' : 'Save'">Save</span>
+                        </button>
+                        <span x-show="saved" x-transition class="text-xs text-green-600 font-bold flex items-center gap-1">
+                            <i class="fas fa-check"></i> Updated
+                        </span>
+                    </div>
+
+                    {{-- Shipping fee estimate (uses parent scope qty) --}}
+                    @if($seaPerKg > 0)
+                    <div class="mt-3 pt-3 border-t border-blue-200 space-y-1.5 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Est. sea shipping (1 item):</span>
+                            <span class="font-bold text-blue-700">{{ $estSymbol }}<span x-text="(Math.ceil(weight * 2) / 2 * seaPerKg).toFixed(2)">{{ number_format(ceil($estWeight * 2) / 2 * $seaPerKg, 2) }}</span></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Est. sea shipping (your qty):</span>
+                            <span class="font-bold text-blue-700">{{ $estSymbol }}<span x-text="(Math.ceil(weight * qty * 2) / 2 * seaPerKg).toFixed(2)">{{ number_format(ceil($estWeight * ($data['moq'] ?? 1) * 2) / 2 * $seaPerKg, 2) }}</span></span>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-[10px] text-gray-500 flex items-start gap-1.5">
+                        <i class="fas fa-info-circle text-gray-400 mt-0.5"></i>
+                        <span>Sea shipping is charged per kg after weighing at our China warehouse. Weight is rounded up to the nearest 0.5kg. @if($isDefaultWeight)This is an estimate — actual weight will be confirmed when your goods arrive at our warehouse.@endif</span>
+                    </div>
+                    @else
+                    <div class="mt-2 text-[10px] text-gray-500 flex items-start gap-1.5">
+                        <i class="fas fa-info-circle text-gray-400 mt-0.5"></i>
+                        <span>Sea shipping fee is calculated per kg after weighing at our China warehouse. @if($isDefaultWeight)Weight shown is an estimate — actual weight will be confirmed on arrival.@endif</span>
+                    </div>
+                    @endif
+                </div>
+                @endif
+
                 {{-- Auto-detected shipping flags ────────────────────────────── --}}
                 @php
                     $flags = [];
