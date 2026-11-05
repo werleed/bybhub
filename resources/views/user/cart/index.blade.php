@@ -288,7 +288,7 @@
 
                 <p class="text-[11px] text-gray-400 text-center flex items-center justify-center gap-1.5">
                     <i class="fas fa-shield-alt text-gray-300"></i>
-                    Secure checkout · Wallet or BNPL
+                    Secure checkout · Wallet or Instalments
                 </p>
             </div>
             </div>

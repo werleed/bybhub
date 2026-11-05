@@ -194,9 +194,6 @@
                                     <div x-show="paymentMethod === 'klump'" class="w-2 h-2 bg-white rounded-full"></div>
                                 </div>
                             </div>
-                            @if($bnpl['klump']['env'] === 'test')
-                            <span class="mt-2 inline-block text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full">Test Mode</span>
-                            @endif
                         </div>
                     </label>
                     @else
@@ -207,16 +204,11 @@
                                     <i class="fas fa-hand-holding-usd text-gray-400 text-sm"></i>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-600 text-sm">Klump BNPL</p>
+                                    <p class="font-bold text-gray-600 text-sm">Klump — Pay in Instalments</p>
                                     <p class="text-xs text-gray-400">Pay in instalments</p>
                                 </div>
                             </div>
-                            <span class="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded-full">
-                                @if(!$bnpl['klump']['enabled']) Coming Soon
-                                @elseif(empty($bnpl['klump']['public_key'])) Not Configured
-                                @else Min {{ $symbol }}{{ number_format($bnpl['klump']['min_amount'], 0) }}
-                                @endif
-                            </span>
+                            <span class="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded-full">Coming Soon</span>
                         </div>
                     </div>
                     @endif
@@ -242,9 +234,6 @@
                                     <div x-show="paymentMethod === 'credpal'" class="w-2 h-2 bg-white rounded-full"></div>
                                 </div>
                             </div>
-                            @if($bnpl['credpal']['env'] === 'test')
-                            <span class="mt-2 inline-block text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full">Test Mode</span>
-                            @endif
                         </div>
                     </label>
                     @else
@@ -255,16 +244,11 @@
                                     <i class="fas fa-credit-card text-gray-400 text-sm"></i>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-600 text-sm">Credpal</p>
+                                    <p class="font-bold text-gray-600 text-sm">Credpal — Credit Payment</p>
                                     <p class="text-xs text-gray-400">Credit-based payment</p>
                                 </div>
                             </div>
-                            <span class="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded-full">
-                                @if(!$bnpl['credpal']['enabled']) Coming Soon
-                                @elseif(empty($bnpl['credpal']['public_key'])) Not Configured
-                                @else Min {{ $symbol }}{{ number_format($bnpl['credpal']['min_amount'], 0) }}
-                                @endif
-                            </span>
+                            <span class="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded-full">Coming Soon</span>
                         </div>
                     </div>
                     @endif
@@ -290,9 +274,6 @@
                                     <div x-show="paymentMethod === 'zilla'" class="w-2 h-2 bg-white rounded-full"></div>
                                 </div>
                             </div>
-                            @if($bnpl['zilla']['env'] === 'test')
-                            <span class="mt-2 inline-block text-[10px] bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full">Test Mode</span>
-                            @endif
                         </div>
                     </label>
                     @else
@@ -303,16 +284,11 @@
                                     <i class="fas fa-bolt text-gray-400 text-sm"></i>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-600 text-sm">ZiLLA</p>
+                                    <p class="font-bold text-gray-600 text-sm">ZiLLA — Buy Now Pay Later</p>
                                     <p class="text-xs text-gray-400">Buy now, pay later</p>
                                 </div>
                             </div>
-                            <span class="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded-full">
-                                @if(!$bnpl['zilla']['enabled']) Coming Soon
-                                @elseif(empty($bnpl['zilla']['public_key'])) Not Configured
-                                @else Min {{ $symbol }}{{ number_format($bnpl['zilla']['min_amount'], 0) }}
-                                @endif
-                            </span>
+                            <span class="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded-full">Coming Soon</span>
                         </div>
                     </div>
                     @endif

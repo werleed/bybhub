@@ -59,9 +59,9 @@ class OrderController extends Controller
             'terms_accepted'   => 'accepted',
         ]);
 
-        // Only sea shipping is allowed; air/cargo routes are admin-assigned
+        // Only sea shipping is allowed at checkout
         if (!str_starts_with($request->shipping_method, 'sea')) {
-            return back()->with('error', 'Invalid shipping method.');
+            return back()->with('error', 'We couldn\'t process your order. Please return to checkout and try again.');
         }
 
         $user  = auth()->user();
