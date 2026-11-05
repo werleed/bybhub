@@ -192,66 +192,85 @@
                 </div>
                 @endif
 
-                {{-- ── Estimated Weight & Shipping Fee ──────────────────────── --}}
+                {{-- ── Product Details (all extracted data) ─────────────────── --}}
                 @php
                     $estProduct = \App\Models\Product::find($data['product_id'] ?? null);
-                    $estWeight  = $estProduct ? $estProduct->getBillableWeight('sea') : 0.5;
-                    $estSymbol  = $data['symbol'] ?? auth()->user()->currencySymbol();
-                    $estRate    = (float)($data['rate'] ?? 205);
-                    $estCountry = auth()->user()->country;
-                    // Sea shipping per-kg rate from DB
-                    $seaRate = \App\Models\ShippingRate::where('country', $estCountry)
-                        ->where('method', 'sea_los')->where('is_active', true)->first();
-                    $seaPerKg = $seaRate ? (float)$seaRate->rate : 0;
-                    $seaRateCurrency = $seaRate->currency ?? 'NGN';
-                    // Convert per-kg rate to user's currency if needed
-                    if ($seaPerKg > 0 && $seaRateCurrency !== auth()->user()->currency) {
-                        $convertRate = \App\Models\ExchangeRate::getRate($seaRateCurrency, auth()->user()->currency);
-                        if ($convertRate > 0) $seaPerKg = $seaPerKg * $convertRate;
+                    $estWeight  = $estProduct ? $estProduct->weight_kg : ($data['weight_kg'] ?? null);
+                    $isDefaultWeight = !$estWeight || abs((float)$estWeight - 0.5) < 0.001;
+
+                    // Supplier details
+                    $supplierRows = [];
+                    if(!empty($data['seller_name']))      $supplierRows['Supplier'] = $data['seller_name'];
+                    if(!empty($data['supplier_verified'])) $supplierRows['Verified'] = '<i class="fas fa-check-circle text-green-500"></i> Verified supplier';
+                    if(!empty($data['supplier_level']))   $supplierRows['Level'] = $data['supplier_level'];
+                    if(!empty($data['supplier_years']))    $supplierRows['Years in business'] = $data['supplier_years'] . ' years';
+                    if(!empty($data['supplier_city']))      $supplierRows['Location'] = ucfirst($data['supplier_city']);
+                    if(isset($data['supplier_response_rate']) && $data['supplier_response_rate'])    $supplierRows['Response rate'] = $data['supplier_response_rate'] . '%';
+                    if(isset($data['supplier_repeat_buyer_rate']) && $data['supplier_repeat_buyer_rate']) $supplierRows['Repeat buyer rate'] = $data['supplier_repeat_buyer_rate'] . '%';
+                    if(isset($data['supplier_dispute_rate']) && $data['supplier_dispute_rate'])       $supplierRows['Dispute rate'] = $data['supplier_dispute_rate'] . '%';
+                    if(!empty($data['supplier_review_count'])) $supplierRows['Reviews'] = number_format($data['supplier_review_count']);
+                    if(!empty($data['supplier_has_customisation'])) $supplierRows['Customisation'] = '<i class="fas fa-check text-green-500"></i> Available';
+                    if(!empty($data['supplier_export_oriented']))  $supplierRows['Export-oriented'] = '<i class="fas fa-check text-green-500"></i> Yes';
+
+                    // Logistics details
+                    $logisticsRows = [];
+                    if($estWeight) $logisticsRows['Weight'] = number_format((float)$estWeight, 2) . ' kg' . ($isDefaultWeight ? ' <span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Estimated</span>' : '');
+                    if(!empty($data['length_cm'])) $logisticsRows['Dimensions'] = $data['length_cm'] . ' × ' . ($data['width_cm'] ?? '?') . ' × ' . ($data['height_cm'] ?? '?') . ' cm';
+                    if(!empty($data['volumetric_weight_kg'])) $logisticsRows['Volumetric weight'] = number_format($data['volumetric_weight_kg'], 3) . ' kg';
+                    if(!empty($data['domestic_freight_cny']) && $data['domestic_freight_cny'] > 0) $logisticsRows['China domestic freight'] = '¥' . number_format($data['domestic_freight_cny'], 2);
+                    if(!empty($data['moq']) && $data['moq'] > 1) $logisticsRows['Min. order'] = $data['moq'] . ' pcs';
+                    if(!empty($data['unit_label'])) $logisticsRows['Unit'] = $data['unit_label'];
+                    if(!empty($data['qty_step']) && $data['qty_step'] > 1) $logisticsRows['Quantity step'] = 'Multiples of ' . $data['qty_step'];
+                    if(!empty($data['sold_count']) && $data['sold_count'] > 0) $logisticsRows['Sold'] = number_format($data['sold_count']) . ' pcs';
+                    if(!empty($data['sample_available'])) $logisticsRows['Sample'] = '<i class="fas fa-check text-green-500"></i> Available' . (!empty($data['sample_price_cny']) ? ' (¥' . number_format($data['sample_price_cny'], 2) . ')' : '');
+
+                    // Trade details
+                    $tradeRows = [];
+                    if(!empty($data['hs_code'])) $tradeRows['HS Code'] = $data['hs_code'];
+                    if(!empty($data['refund_policy']) && $data['refund_policy'] !== 'no_return') {
+                        $tradeRows['Refund policy'] = $data['refund_policy'] === '7_day_return' ? '7-day return' : ($data['refund_policy'] === 'quality_guarantee' ? 'Quality guarantee' : 'No returns');
+                    } else {
+                        $tradeRows['Refund policy'] = 'No returns (standard for China sourcing)';
                     }
-                    $isDefaultWeight = $estProduct && (float)($estProduct->weight_kg ?? 0) <= 0
-                        || (abs($estWeight - 0.5) < 0.001);
+                    if(!empty($data['supplier_chat_url'])) $tradeRows['Supplier chat'] = '<a href="' . $data['supplier_chat_url'] . '" target="_blank" class="text-blue-500 hover:underline">Contact supplier <i class="fas fa-external-link-alt text-[9px]"></i></a>';
                 @endphp
-                @if($estProduct)
-                <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4"
-                     x-data="{
-                        weight: {{ $estWeight }},
-                        seaPerKg: {{ $seaPerKg }},
-                        editing: false,
-                        saving: false,
-                        saved: false,
-                        updateWeight() {
-                            this.saving = true;
-                            fetch('{{ route('user.product.weight', $estProduct->id) }}', {
-                                method: 'POST',
-                                headers: {'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'},
-                                body: JSON.stringify({weight_kg: this.weight})
-                            }).then(r => r.json()).then(d => {
-                                this.saving = false;
-                                if(d.success){ this.saved = true; this.editing = false; setTimeout(()=>this.saved=false, 2000); }
-                            });
-                        }
-                     }">
-                    <div class="flex items-center justify-between mb-2">
-                        <p class="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fas fa-weight-hanging text-blue-500"></i> Estimated Weight & Shipping
+
+                {{-- Supplier Info --}}
+                @if(!empty($supplierRows))
+                <div class="bg-white border border-gray-100 rounded-2xl p-4 mb-3">
+                    <p class="text-xs font-bold text-gray-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <i class="fas fa-store text-primary text-xs"></i> Supplier Information
+                    </p>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                        @foreach($supplierRows as $label => $value)
+                        <div class="flex flex-col">
+                            <span class="text-gray-400">{{ $label }}</span>
+                            <span class="font-semibold text-gray-700">{!! $value !!}</span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Logistics --}}
+                @if(!empty($logisticsRows))
+                <div class="bg-white border border-gray-100 rounded-2xl p-4 mb-3"
+                     x-data="{ editing: false, saving: false, saved: false, weight: {{ $estWeight ?? 0.5 }}, updateWeight(){ this.saving=true; fetch('{{ route('user.product.weight', $estProduct->id ?? 0) }}', {method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'},body:JSON.stringify({weight_kg:this.weight})}).then(r=>r.json()).then(d=>{this.saving=false;if(d.success){this.saved=true;this.editing=false;setTimeout(()=>this.saved=false,2000);}}); } }">
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fas fa-box text-primary text-xs"></i> Logistics
                         </p>
+                        @if($estProduct && $isDefaultWeight)
                         <button type="button" @click="editing = !editing"
                             class="text-[11px] text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1">
-                            <i class="fas fa-edit text-[10px]"></i> Edit weight
+                            <i class="fas fa-edit text-[10px]"></i> Correct weight
                         </button>
-                    </div>
-
-                    {{-- Weight display / edit --}}
-                    <div x-show="!editing" class="flex items-center gap-3 text-sm">
-                        <span class="text-gray-600">Item weight:</span>
-                        <span class="font-bold text-blue-800" x-text="weight.toFixed(2) + ' kg'">{{ number_format($estWeight, 2) }} kg</span>
-                        @if($isDefaultWeight)
-                        <span class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Estimated</span>
                         @endif
                     </div>
-                    <div x-show="editing" x-transition class="flex items-center gap-2">
-                        <input type="number" x-model.number="weight" step="0.1" min="0.1"
+                    {{-- Weight edit row --}}
+                    @if($estProduct && $isDefaultWeight)
+                    <div x-show="editing" x-transition class="flex items-center gap-2 mb-3 pb-3 border-b border-gray-50">
+                        <input type="number" x-model.number="weight" step="0.1" min="0.1" placeholder="kg"
                             class="w-20 border-2 border-blue-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400">
                         <span class="text-sm text-gray-500">kg</span>
                         <button type="button" @click="updateWeight()" :disabled="saving"
@@ -262,29 +281,32 @@
                             <i class="fas fa-check"></i> Updated
                         </span>
                     </div>
-
-                    {{-- Shipping fee estimate (uses parent scope qty) --}}
-                    @if($seaPerKg > 0)
-                    <div class="mt-3 pt-3 border-t border-blue-200 space-y-1.5 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Est. sea shipping (1 item):</span>
-                            <span class="font-bold text-blue-700">{{ $estSymbol }}<span x-text="(Math.ceil(weight * 2) / 2 * seaPerKg).toFixed(2)">{{ number_format(ceil($estWeight * 2) / 2 * $seaPerKg, 2) }}</span></span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Est. sea shipping (your qty):</span>
-                            <span class="font-bold text-blue-700">{{ $estSymbol }}<span x-text="(Math.ceil(weight * qty * 2) / 2 * seaPerKg).toFixed(2)">{{ number_format(ceil($estWeight * ($data['moq'] ?? 1) * 2) / 2 * $seaPerKg, 2) }}</span></span>
-                        </div>
-                    </div>
-                    <div class="mt-2 text-[10px] text-gray-500 flex items-start gap-1.5">
-                        <i class="fas fa-info-circle text-gray-400 mt-0.5"></i>
-                        <span>Sea shipping is charged per kg after weighing at our China warehouse. Weight is rounded up to the nearest 0.5kg. @if($isDefaultWeight)This is an estimate — actual weight will be confirmed when your goods arrive at our warehouse.@endif</span>
-                    </div>
-                    @else
-                    <div class="mt-2 text-[10px] text-gray-500 flex items-start gap-1.5">
-                        <i class="fas fa-info-circle text-gray-400 mt-0.5"></i>
-                        <span>Sea shipping fee is calculated per kg after weighing at our China warehouse. @if($isDefaultWeight)Weight shown is an estimate — actual weight will be confirmed on arrival.@endif</span>
-                    </div>
                     @endif
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                        @foreach($logisticsRows as $label => $value)
+                        <div class="flex flex-col">
+                            <span class="text-gray-400">{{ $label }}</span>
+                            <span class="font-semibold text-gray-700">{!! $value !!}</span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Trade & Compliance --}}
+                @if(!empty($tradeRows))
+                <div class="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
+                    <p class="text-xs font-bold text-gray-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <i class="fas fa-file-invoice text-primary text-xs"></i> Trade & Compliance
+                    </p>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                        @foreach($tradeRows as $label => $value)
+                        <div class="flex flex-col">
+                            <span class="text-gray-400">{{ $label }}</span>
+                            <span class="font-semibold text-gray-700">{!! $value !!}</span>
+                        </div>
+                        @endforeach
+                    </div>
                 </div>
                 @endif
 
