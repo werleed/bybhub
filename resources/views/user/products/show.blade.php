@@ -366,6 +366,10 @@
                 @endif
                 @endif
 
+                @if(!$product->isLocalProduct())
+                @include('user.products._landed_cost')
+                @endif
+
                 @if($product->weight_kg || $product->source_url)
                 <div class="text-xs text-gray-400 space-y-1.5 pt-3 border-t border-gray-100">
                     @if($product->weight_kg)<p class="flex items-center gap-2"><i class="fas fa-weight-hanging w-4 text-gray-300"></i>Weight: {{ $product->weight_kg }}kg</p>@endif
@@ -448,6 +452,38 @@
     </div>
     @endif
 </div>
+
+{{-- ── Mobile sticky bottom bar (PWA app style) ─────────────────────────── --}}
+@if(!$product->isOutOfStock() && !$product->vendor)
+<div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-4 py-3 flex items-center justify-between z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+    <div class="min-w-0">
+        @if($product->isFlashSaleActive())
+        <p class="text-lg font-black text-red-500 leading-none" style="font-family:Poppins,sans-serif">{{ $symbol }}{{ number_format($priceLocal,2) }}</p>
+        @else
+        <p class="text-lg font-black text-primary leading-none" style="font-family:Poppins,sans-serif">{{ $symbol }}<span x-text="fmt(activePriceLocal)">{{ number_format($priceLocal,2) }}</span></p>
+        @endif
+        <p class="text-[10px] text-gray-400 mt-0.5">¥{{ number_format($product->price_cny,2) }} · ~{{ number_format($product->getBillableWeight('sea'),1) }}kg</p>
+    </div>
+    @auth
+    <form action="{{ route('user.cart.add') }}" method="POST" class="flex-shrink-0">
+        @csrf
+        <input type="hidden" name="product_id" value="{{ $product->id }}">
+        <input type="hidden" name="quantity" :value="qty">
+        <input type="hidden" name="selected_variant" :value="variant">
+        <button type="submit"
+            class="bg-accent hover:bg-accent-dark text-white font-bold px-6 py-3 rounded-xl text-sm flex items-center gap-2 btn-glow transition active:scale-95">
+            <i class="fas fa-cart-plus text-xs"></i> Add to Cart
+        </button>
+    </form>
+    @else
+    <a href="{{ route('login') }}"
+        class="bg-primary hover:bg-primary-dark text-white font-bold px-6 py-3 rounded-xl text-sm flex items-center gap-2 transition active:scale-95">
+        <i class="fas fa-sign-in-alt text-xs"></i> Sign In
+    </a>
+    @endauth
+</div>
+<div class="h-20 lg:hidden"></div>{{-- spacer so content doesn't hide behind sticky bar --}}
+@endif
 
 @push('scripts')
 <script>
